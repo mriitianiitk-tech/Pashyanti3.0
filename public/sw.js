@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pashyanti-v2.1';
+const CACHE_NAME = 'pashyanti-v3.0';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -29,6 +29,21 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // Never intercept local development server, Vite HMR, or backend APIs
+  if (
+    url.hostname === 'localhost' ||
+    url.hostname === '127.0.0.1' ||
+    url.pathname.startsWith('/api') ||
+    url.pathname.startsWith('/src') ||
+    url.pathname.startsWith('/@') ||
+    url.search.includes('t=') ||
+    event.request.method !== 'GET'
+  ) {
+    return;
+  }
+
   // Navigation requests: Stale-while-revalidate or Network first with fallback
   if (event.request.mode === 'navigate') {
     event.respondWith(
@@ -44,11 +59,10 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
       return fetch(event.request).then((networkResponse) => {
-        // Cache external fonts or scripts if successful
         if (
           networkResponse &&
           networkResponse.status === 200 &&
-          (event.request.url.startsWith('http') || event.request.url.startsWith('https'))
+          (event.request.url.startsWith('http://') || event.request.url.startsWith('https://'))
         ) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -57,7 +71,6 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       }).catch(() => {
-        // Fallback for offline if not cached
         return cachedResponse;
       });
     })

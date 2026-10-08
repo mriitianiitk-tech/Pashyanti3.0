@@ -53,21 +53,21 @@ export default function Header() {
                 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 light:bg-emerald-50 light:border-emerald-300 light:text-emerald-800'
                 : 'border-slate-800 bg-slate-900/60 text-slate-300 hover:text-amber-400 hover:border-amber-500/30 light:border-amber-200 light:bg-amber-100/50 light:text-amber-900'
             }`}
-            title={user ? `Signed in as ${user.name} (Cloudflare D1 Synced)` : 'Sign in with Google / Sync with D1'}
+            title={user ? `Signed in as ${user.name || user.email || 'Devotee'} (Cloudflare D1 Synced)` : 'Sign in with Google / Sync with D1'}
           >
             {user ? (
               <>
                 {user.picture ? (
                   <img
                     src={user.picture}
-                    alt={user.name}
+                    alt={user.name || 'Devotee'}
                     className="w-4 h-4 rounded-full object-cover"
                   />
                 ) : (
                   <User className="w-3.5 h-3.5 text-emerald-400" />
                 )}
                 <span className="hidden md:inline font-medium max-w-[80px] truncate">
-                  {user.name?.split(' ')[0]}
+                  {(user.name || user.email || 'Devotee').split(' ')[0]}
                 </span>
                 <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                   syncStatus === 'syncing' ? 'bg-amber-400 animate-spin' :

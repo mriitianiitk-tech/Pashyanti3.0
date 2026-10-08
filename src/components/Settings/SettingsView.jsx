@@ -131,7 +131,7 @@ export default function SettingsView() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="font-semibold text-slate-200 light:text-slate-900 flex items-center gap-2">
-                <span>{user ? `Logged In: ${user.name}` : 'Current Mode: Local / Guest'}</span>
+                <span>{user ? `Logged In: ${user.name || user.email || 'Devotee'}` : 'Current Mode: Local / Guest'}</span>
                 <span className={`w-2 h-2 rounded-full ${
                   syncStatus === 'synced' ? 'bg-emerald-400 animate-pulse' :
                   syncStatus === 'syncing' ? 'bg-amber-400 animate-spin' :

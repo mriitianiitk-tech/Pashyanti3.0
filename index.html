@@ -24,19 +24,70 @@
     <!-- Google Fonts for Meditative & Vedic Aesthetics -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Global Error Shield to Prevent Silent Blank Screens -->
+    <script>
+      function showStartupError(msg, stack) {
+        var existing = document.getElementById('pashyanti-startup-banner');
+        if (existing) return;
+        var box = document.createElement('div');
+        box.id = 'pashyanti-startup-banner';
+        box.style.cssText = 'position:fixed;inset:0;background:#060911;color:#f87171;padding:24px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;z-index:9999999;overflow:auto;display:flex;align-items:center;justify-content:center;';
+        box.innerHTML = '<div style="max-width:580px;width:100%;background:#0e131f;border:1px solid #ef4444;border-radius:16px;padding:24px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.7);">' +
+          '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;"><span style="font-size:28px;">ॐ</span><h2 style="margin:0;color:#f59e0b;font-size:18px;">Pashyanti Diagnostic</h2></div>' +
+          '<p style="color:#94a3b8;font-size:13px;margin:0 0 12px;">The application encountered an error while launching:</p>' +
+          '<pre style="background:#1e293b;color:#fca5a5;padding:12px;border-radius:8px;font-size:12px;line-height:1.4;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto;">' + (msg || 'Unknown Script Error') + (stack ? '\n\n' + stack : '') + '</pre>' +
+          '<div style="display:flex;gap:10px;margin-top:16px;">' +
+          '<button onclick="location.reload();" style="flex:1;background:#334155;color:#f8fafc;padding:10px 14px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Reload</button>' +
+          '<button onclick="localStorage.clear();sessionStorage.clear();if(\'caches\' in window){caches.keys().then(function(k){k.forEach(function(x){caches.delete(x);});});}location.reload();" style="flex:1;background:#f59e0b;color:#090d16;padding:10px 14px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">Clear Storage & Reset</button>' +
+          '</div></div>';
+        document.body.appendChild(box);
+      }
+
+      window.addEventListener('error', function(e) {
+        var root = document.getElementById('root');
+        if (!root || !root.hasChildNodes() || root.children.length === 0) {
+          showStartupError(e.message + ' (' + e.filename + ':' + e.lineno + ')', e.error ? e.error.stack : '');
+        }
+      });
+
+      window.addEventListener('unhandledrejection', function(e) {
+        var root = document.getElementById('root');
+        if (!root || !root.hasChildNodes() || root.children.length === 0) {
+          var err = e.reason || {};
+          showStartupError(err.message || String(err), err.stack || '');
+        }
+      });
+    </script>
   </head>
   <body class="min-h-screen antialiased selection:bg-amber-500/30 selection:text-amber-200 bg-slate-950 text-slate-100 light:bg-[#fbf9f4] light:text-slate-900 transition-colors duration-200">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      // Register Service Worker for PWA Android / Offline Support
+      // Service worker management: unregister on localhost to avoid stale cache breaking Vite HMR
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').then(
-            (reg) => console.log('Pashyanti PWA registered successfully: ', reg.scope),
-            (err) => console.log('ServiceWorker registration error: ', err)
-          );
-        });
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (var i = 0; i < registrations.length; i++) {
+              registrations[i].unregister();
+            }
+          });
+          if ('caches' in window) {
+            caches.keys().then(function(keys) {
+              keys.forEach(function(key) {
+                if (key.indexOf('pashyanti') !== -1) {
+                  caches.delete(key);
+                }
+              });
+            });
+          }
+        } else {
+          window.addEventListener('load', function() {
+            navigator.serviceWorker.register('/sw.js').catch(function(err) {
+              console.warn('Pashyanti SW registration skipped:', err);
+            });
+          });
+        }
       }
     </script>
   </body>

@@ -30,13 +30,21 @@ export function AppProvider({ children }) {
 
   // Feedback options
   const [soundEnabled, setSoundEnabled] = useState(() => {
-    const val = localStorage.getItem('pashyanti_sound');
-    return val !== null ? JSON.parse(val) : true;
+    try {
+      const val = localStorage.getItem('pashyanti_sound');
+      return val !== null ? JSON.parse(val) : true;
+    } catch (e) {
+      return true;
+    }
   });
 
   const [vibrateEnabled, setVibrateEnabled] = useState(() => {
-    const val = localStorage.getItem('pashyanti_vibrate');
-    return val !== null ? JSON.parse(val) : true;
+    try {
+      const val = localStorage.getItem('pashyanti_vibrate');
+      return val !== null ? JSON.parse(val) : true;
+    } catch (e) {
+      return true;
+    }
   });
 
   // Typography & Aesthetics

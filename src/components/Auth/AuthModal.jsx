@@ -172,7 +172,7 @@ export default function AuthModal() {
                 {user.picture ? (
                   <img
                     src={user.picture}
-                    alt={user.name}
+                    alt={user.name || 'Devotee'}
                     className="w-12 h-12 rounded-full border-2 border-amber-500/50 object-cover"
                   />
                 ) : (
@@ -183,7 +183,7 @@ export default function AuthModal() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-sm truncate text-slate-100 light:text-slate-900">
-                      {user.name}
+                      {user.name || user.email || 'Devotee'}
                     </h3>
                     {user.isDemo && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
