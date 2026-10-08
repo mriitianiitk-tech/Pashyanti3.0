@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Pashyanti 3.0 • Sacred Sadhana & Cloud Japa</title>
+    
+    <!-- PWA Primary Meta Tags -->
+    <meta name="theme-color" content="#d97706" />
+    <meta name="description" content="Sacred Space for Mindful Chanting, Stotras, Sahasranamas and Cloud-Synced Naam Japa with Cloudflare D1" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Pashyanti 3.0" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.svg" />
+
+    <!-- Google Identity Services (GIS) for Google Sign-In -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <!-- Google Fonts for Meditative & Vedic Aesthetics -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  </head>
+  <body class="min-h-screen antialiased selection:bg-amber-500/30 selection:text-amber-200 bg-slate-950 text-slate-100 light:bg-[#fbf9f4] light:text-slate-900 transition-colors duration-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <script>
+      // Register Service Worker for PWA Android / Offline Support
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(
+            (reg) => console.log('Pashyanti PWA registered successfully: ', reg.scope),
+            (err) => console.log('ServiceWorker registration error: ', err)
+          );
+        });
+      }
+    </script>
+  </body>
+</html>

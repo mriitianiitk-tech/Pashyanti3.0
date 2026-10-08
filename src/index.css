@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Smooth touch response on phones */
+  button, [role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+  }
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #090d16;
+  color: #f8fafc;
+}
+
+html.light {
+  color-scheme: light;
+}
+
+html.light body {
+  background-color: #fdfbf7;
+  color: #1e293b;
+}
+
+/* Theme styles */
+.theme-dark {
+  --bg-primary: #090d16;
+  --bg-surface: #111827;
+  --bg-surface-elevated: #1f2937;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --text-primary: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent-gold: #f59e0b;
+}
+
+.theme-light {
+  --bg-primary: #fcfbf7;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f4efe6;
+  --border-color: rgba(0, 0, 0, 0.08);
+  --text-primary: #1e293b;
+  --text-muted: #64748b;
+  --accent-gold: #d97706;
+}
+
+/* Meditative word transitions */
+.japa-word {
+  display: inline-block;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.2s ease, text-shadow 0.2s ease;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.word-active {
+  transform: scale(1.16);
+  font-weight: 700;
+  text-shadow: 0 0 16px rgba(245, 158, 11, 0.6);
+}
+
+/* Subtle glow animations */
+@keyframes sacredPulse {
+  0%, 100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+}
+
+.animate-sacred-pulse {
+  animation: sacredPulse 3.5s ease-in-out infinite;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(217, 119, 6, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(217, 119, 6, 0.45);
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
