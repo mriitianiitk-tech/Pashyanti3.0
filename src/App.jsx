@@ -9,7 +9,16 @@ import SettingsView from './components/Settings/SettingsView';
 import AuthModal from './components/Auth/AuthModal';
 
 function AppContent() {
-  const { activeTab } = useApp();
+  const { activeTab, isZenFullscreen } = useApp();
+
+  if (isZenFullscreen) {
+    return (
+      <div className="fixed inset-0 z-50 h-[100dvh] w-screen overflow-hidden bg-slate-950 text-slate-100 light:bg-[#fbf9f4] light:text-slate-900 select-none">
+        {activeTab === 'naamjapa' && <NaamJapaView />}
+        {activeTab === 'sadhana' && <SadhanaView />}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 light:bg-amber-50/40 light:text-slate-900 transition-colors duration-200">

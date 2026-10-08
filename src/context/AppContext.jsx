@@ -156,6 +156,82 @@ export function AppProvider({ children }) {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
+  // ========================================================
+  // Smartphone Zen Fullscreen & Native Fullscreen API
+  // ========================================================
+  const [isZenFullscreen, setIsZenFullscreen] = useState(false);
+
+  const enterZenFullscreen = useCallback(() => {
+    setIsZenFullscreen(true);
+    const el = document.documentElement;
+    try {
+      if (el.requestFullscreen) {
+        el.requestFullscreen().catch(() => {});
+      } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+      } else if (el.mozRequestFullScreen) {
+        el.mozRequestFullScreen();
+      } else if (el.msRequestFullscreen) {
+        el.msRequestFullscreen();
+      }
+    } catch (e) {
+      console.debug('Native fullscreen request ignored:', e);
+    }
+  }, []);
+
+  const exitZenFullscreen = useCallback(() => {
+    setIsZenFullscreen(false);
+    try {
+      if (
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      ) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+          document.mozCancelFullScreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
+        }
+      }
+    } catch (e) {
+      console.debug('Native fullscreen exit ignored:', e);
+    }
+  }, []);
+
+  const toggleZenFullscreen = useCallback(() => {
+    if (isZenFullscreen) {
+      exitZenFullscreen();
+    } else {
+      enterZenFullscreen();
+    }
+  }, [isZenFullscreen, enterZenFullscreen, exitZenFullscreen]);
+
+  // Sync with user pressing Esc or hardware gestures
+  useEffect(() => {
+    const handleFsChange = () => {
+      const isFs = Boolean(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+      if (!isFs && isZenFullscreen) {
+        setIsZenFullscreen(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
+  }, [isZenFullscreen]);
+
   // Sync Theme to HTML class
   useEffect(() => {
     const root = document.documentElement;
@@ -670,6 +746,11 @@ export function AppProvider({ children }) {
         // PWA
         isInstallable,
         installPWA,
+        // Zen Fullscreen (Smartphone & Desktop)
+        isZenFullscreen,
+        enterZenFullscreen,
+        exitZenFullscreen,
+        toggleZenFullscreen,
       }}
     >
       {children}
