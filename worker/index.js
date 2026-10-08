@@ -150,6 +150,80 @@ export default {
 
     try {
       // ----------------------------------------------------
+      // 0. Root Welcome & API Info: GET /
+      // ----------------------------------------------------
+      if (pathname === '/' || pathname === '') {
+        const accept = request.headers.get('Accept') || '';
+        let dbOk = false;
+        if (env.DB) {
+          try {
+            const res = await env.DB.prepare('SELECT 1 as ok').first();
+            dbOk = res?.ok === 1;
+          } catch (e) {}
+        }
+
+        if (accept.includes('text/html')) {
+          const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pashyanti 3.0 • Backend API</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #090d16; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+    .card { max-width: 540px; width: 100%; background: #0f172a; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 20px; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+    h1 { color: #f59e0b; margin: 0 0 8px; font-size: 22px; display: flex; align-items: center; gap: 10px; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: bold; background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); margin-bottom: 16px; }
+    p { color: #94a3b8; font-size: 14px; line-height: 1.6; margin: 8px 0; }
+    ul { background: #1e293b; padding: 16px 20px 16px 36px; border-radius: 12px; font-family: monospace; font-size: 13px; color: #cbd5e1; }
+    li { margin: 6px 0; }
+    .note { padding: 12px; background: rgba(245, 158, 11, 0.1); border-left: 3px solid #f59e0b; border-radius: 6px; font-size: 13px; color: #fbbf24; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1><span>ॐ</span> Pashyanti 3.0 Cloudflare Worker</h1>
+    <div class="badge">${dbOk ? '● Cloudflare D1 Connected & Healthy' : '○ D1 Initializing'}</div>
+    <p>This is the <strong>Backend API Service</strong> powering multi-device sync, Google authentication, and Cloudflare D1 cloud storage.</p>
+    <div class="note">
+      <strong>Important:</strong> The React frontend user interface (UI) is hosted on <strong>Cloudflare Pages</strong> (<code>*.pages.dev</code>).
+    </div>
+    <p style="margin-top:20px;font-weight:600;color:#e2e8f0;">Active REST Endpoints:</p>
+    <ul>
+      <li>GET /api/health</li>
+      <li>POST /api/auth/google</li>
+      <li>POST /api/auth/demo</li>
+      <li>GET /api/auth/me</li>
+      <li>GET & POST /api/sync</li>
+    </ul>
+  </div>
+</body>
+</html>`;
+          return new Response(html, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/html; charset=utf-8',
+              ...corsHeaders(origin),
+            },
+          });
+        }
+
+        return jsonResponse({
+          service: 'Pashyanti 3.0 Cloudflare Backend API',
+          status: 'online',
+          database: { connected: dbOk, engine: 'Cloudflare D1 SQL' },
+          message: 'This is the backend API service. The frontend web app is hosted on Cloudflare Pages.',
+          endpoints: [
+            '/api/health',
+            '/api/auth/google',
+            '/api/auth/demo',
+            '/api/auth/me',
+            '/api/sync'
+          ]
+        }, 200, origin);
+      }
+
+      // ----------------------------------------------------
       // 1. Health check & database verification
       // ----------------------------------------------------
       if (pathname === '/api/health') {
