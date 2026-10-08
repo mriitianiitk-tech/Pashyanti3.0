@@ -16,5 +16,5 @@ JWT_SECRET = "pashyanti-sacred-vault-secret-key-3.0"
 [[d1_databases]]
 binding = "DB"
 database_name = "pashyanti-db"
-database_id = "pashyanti-db"
+database_id = "eedff6f6-225e-42a1-b0d9-3f5cc17b1f2c"
 migrations_dir = "worker"
