@@ -150,9 +150,16 @@ export default {
 
     try {
       // ----------------------------------------------------
-      // 0. Root Welcome & API Info: GET /
+      // 0. Static Assets delegation (Serves full React UI from ./dist)
       // ----------------------------------------------------
-      if (pathname === '/' || pathname === '') {
+      if (env.ASSETS && !pathname.startsWith('/api')) {
+        return await env.ASSETS.fetch(request);
+      }
+
+      // ----------------------------------------------------
+      // API Root / Info: GET / or GET /api
+      // ----------------------------------------------------
+      if (pathname === '/' || pathname === '' || pathname === '/api') {
         const accept = request.headers.get('Accept') || '';
         let dbOk = false;
         if (env.DB) {
@@ -536,6 +543,11 @@ export default {
             preferences: mergedPreferences,
           }
         }, 200, origin);
+      }
+
+      // Static assets fallback if route wasn't matched above
+      if (env.ASSETS) {
+        return await env.ASSETS.fetch(request);
       }
 
       // Default fallback
