@@ -121,14 +121,14 @@ export function AppProvider({ children }) {
     return localStorage.getItem('pashyanti_auth_token') || null;
   });
 
-  // Configurable Worker URL (defaults to '' which uses relative /api)
+  // Configurable Worker URL (defaults to relative /api or env variable)
   const [cloudWorkerUrl, setCloudWorkerUrl] = useState(() => {
-    return localStorage.getItem('pashyanti_worker_url') || '';
+    return localStorage.getItem('pashyanti_worker_url') || import.meta.env.VITE_WORKER_URL || '';
   });
 
-  // Google OAuth Client ID (can be configured in Settings or env)
+  // Google OAuth Client ID (can be configured in Settings, AuthModal or env)
   const [googleClientId, setGoogleClientId] = useState(() => {
-    return localStorage.getItem('pashyanti_google_client_id') || '';
+    return localStorage.getItem('pashyanti_google_client_id') || import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
   });
 
   // Sync Status: 'guest' | 'synced' | 'syncing' | 'offline' | 'error'
