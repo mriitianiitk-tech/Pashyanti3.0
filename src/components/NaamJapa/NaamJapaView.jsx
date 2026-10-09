@@ -20,7 +20,8 @@ import {
   Maximize2,
   Minimize2,
   Sliders,
-  X
+  X,
+  Droplet
 } from 'lucide-react';
 import { downloadCSVTemplate } from '../../utils/csvParser';
 
@@ -34,6 +35,11 @@ export default function NaamJapaView() {
     resetNaamJapaSession,
     triggerFeedback,
     fontFamily,
+    naamJapaTypography,
+    updateNaamJapaTypography,
+    dripAnimationSettings,
+    updateDripAnimationSettings,
+    setActiveTab,
     isZenFullscreen,
     enterZenFullscreen,
     exitZenFullscreen,
@@ -47,6 +53,35 @@ export default function NaamJapaView() {
   const [currentStotraTitle, setCurrentStotraTitle] = useState('');
   const [currentStotraDeity, setCurrentStotraDeity] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [fallingDrops, setFallingDrops] = useState([]);
+
+  // Granular styling for the 3 parts of Naam Japa
+  const sanskritStyles = useMemo(() => ({
+    fontFamily: naamJapaTypography?.sanskrit?.fontFamily || fontFamily,
+    fontSize: `${naamJapaTypography?.sanskrit?.fontSize || 40}px`,
+    color: naamJapaTypography?.sanskrit?.color || '#f59e0b',
+    fontWeight: naamJapaTypography?.sanskrit?.fontWeight || 'bold',
+    fontStyle: naamJapaTypography?.sanskrit?.fontStyle || 'normal',
+    textShadow: naamJapaTypography?.sanskrit?.glow
+      ? `0 0 16px ${naamJapaTypography?.sanskrit?.color || '#f59e0b'}80`
+      : 'none',
+  }), [naamJapaTypography, fontFamily]);
+
+  const meaningStyles = useMemo(() => ({
+    fontFamily: naamJapaTypography?.meaning?.fontFamily || 'Montserrat',
+    fontSize: `${naamJapaTypography?.meaning?.fontSize || 15}px`,
+    color: naamJapaTypography?.meaning?.color || '#cbd5e1',
+    fontWeight: naamJapaTypography?.meaning?.fontWeight || 'normal',
+    fontStyle: naamJapaTypography?.meaning?.fontStyle || 'normal',
+  }), [naamJapaTypography]);
+
+  const descriptionStyles = useMemo(() => ({
+    fontFamily: naamJapaTypography?.description?.fontFamily || 'Playfair Display',
+    fontSize: `${naamJapaTypography?.description?.fontSize || 13}px`,
+    color: naamJapaTypography?.description?.color || '#94a3b8',
+    fontWeight: naamJapaTypography?.description?.fontWeight || 'normal',
+    fontStyle: naamJapaTypography?.description?.fontStyle || 'italic',
+  }), [naamJapaTypography]);
 
   // Determine available items pool based on selectedStotraId & randomScope
   const availableItems = useMemo(() => {
@@ -116,6 +151,24 @@ export default function NaamJapaView() {
     if (availableItems.length === 0) return;
 
     logNaamJapaChant();
+
+    // If Falling Drops mode is active, spawn a falling drop for the current chant
+    if (dripAnimationSettings?.naamJapaMode === 'drip' && currentItem) {
+      const isGravity = dripAnimationSettings.naamJapaSpeedMode === 'gravity';
+      const duration = isGravity ? 2000 : dripAnimationSettings.naamJapaDuration || 2000;
+      const timingFunction = isGravity ? 'cubic-bezier(0.5, 0, 1, 0.5)' : 'ease-in-out';
+      const dropItem = {
+        id: Date.now() + Math.random(),
+        sanskrit: currentItem.sanskrit,
+        meaning: currentItem.meaning,
+        duration,
+        timingFunction,
+      };
+      setFallingDrops((prev) => [...prev, dropItem]);
+      setTimeout(() => {
+        setFallingDrops((prev) => prev.filter((d) => d.id !== dropItem.id));
+      }, duration);
+    }
 
     // If currently browsing earlier in history, move forward in history
     if (historyIndex < history.length - 1) {
@@ -291,57 +344,133 @@ export default function NaamJapaView() {
 
         {/* Central Immersive Chanting Canvas (Tap anywhere to advance) */}
         {currentItem ? (
-          <div
-            onClick={handleNext}
-            className="flex-1 flex flex-col items-center justify-center p-2 sm:p-6 text-center cursor-pointer select-none active:scale-[0.99] transition-transform relative z-10 my-auto"
-          >
-            {/* Sacred glowing aura */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 sm:w-[28rem] h-72 sm:h-[28rem] bg-amber-500/8 rounded-full blur-3xl pointer-events-none animate-sacred-pulse" />
-
-            {/* Verse index */}
-            {currentItem.index && (
-              <span className="text-xs font-mono px-3 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-3 sm:mb-6 shadow-xs">
-                #{currentItem.index}
-              </span>
-            )}
-
-            {/* Huge Sacred Sanskrit text */}
-            <h1
-              className={`font-sanskrit font-bold text-amber-400 light:text-amber-800 tracking-wide leading-relaxed drop-shadow-md text-center px-2 sm:px-4 ${fontSizeClass}`}
-              style={{ fontFamily }}
+          dripAnimationSettings?.naamJapaMode === 'drip' ? (
+            /* Immersive Falling Drops Canvas in Zen Mode */
+            <div
+              onClick={handleNext}
+              className="flex-1 flex flex-col items-center justify-between p-2 sm:p-6 text-center cursor-pointer select-none active:scale-[0.99] transition-transform relative z-10 my-auto overflow-hidden h-full max-h-[78vh]"
             >
-              {currentItem.sanskrit}
-            </h1>
+              {/* Sacred glowing aura */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 sm:w-[28rem] h-72 sm:h-[28rem] bg-cyan-500/8 rounded-full blur-3xl pointer-events-none animate-sacred-pulse" />
 
-            {/* Meaning card */}
-            {naamJapaSettings.showMeaning && currentItem.meaning && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="mt-4 sm:mt-6 px-4 py-3 rounded-2xl bg-slate-900/60 light:bg-white/90 border border-slate-800/80 light:border-amber-200/90 text-center text-slate-200 light:text-slate-800 text-sm sm:text-base leading-relaxed max-w-xl shadow-lg backdrop-blur-md"
-              >
-                <div className="text-[10px] uppercase font-bold tracking-wider text-amber-500/70 mb-0.5">
-                  Meaning
+              {/* Mode & Index badge */}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[11px] font-semibold px-3 py-0.5 rounded-full bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 flex items-center gap-1 shadow-xs">
+                  <Droplet className="w-3 h-3 fill-current" />
+                  Falling Drops
+                </span>
+                {currentItem.index && (
+                  <span className="text-xs font-mono px-3 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-xs">
+                    #{currentItem.index}
+                  </span>
+                )}
+              </div>
+
+              {/* Dynamic Dropping Zone */}
+              <div className="relative w-full flex-1 overflow-hidden flex items-center justify-center">
+                {/* Top Static Drop */}
+                <div
+                  className="dripping-word-static"
+                  style={{
+                    ...sanskritStyles,
+                    top: '10%',
+                  }}
+                >
+                  <div>{currentItem.sanskrit}</div>
+                  {dripAnimationSettings.naamJapaShowMeaningInDrip && currentItem.meaning && (
+                    <div
+                      style={meaningStyles}
+                      className="mt-3 text-sm sm:text-base opacity-85 max-w-lg mx-auto"
+                    >
+                      {currentItem.meaning}
+                    </div>
+                  )}
                 </div>
-                <p>{currentItem.meaning}</p>
-              </div>
-            )}
 
-            {/* Description card */}
-            {naamJapaSettings.showDescription && currentItem.description && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="mt-2.5 px-3.5 py-2 text-xs sm:text-sm text-slate-400 light:text-slate-600 italic text-center max-w-lg leading-relaxed"
-              >
-                <p>{currentItem.description}</p>
+                {/* Cascading Drops */}
+                {fallingDrops.map((drop) => (
+                  <div
+                    key={drop.id}
+                    className="dripping-word-falling"
+                    style={{
+                      ...sanskritStyles,
+                      animationDuration: `${drop.duration}ms`,
+                      animationTimingFunction: drop.timingFunction,
+                    }}
+                  >
+                    <div>{drop.sanskrit}</div>
+                    {dripAnimationSettings.naamJapaShowMeaningInDrip && drop.meaning && (
+                      <div
+                        style={meaningStyles}
+                        className="mt-3 text-sm sm:text-base opacity-85 max-w-lg mx-auto"
+                      >
+                        {drop.meaning}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            )}
 
-            {/* Gentle tap indicator */}
-            <div className="mt-6 sm:mt-8 text-[11px] uppercase tracking-widest text-slate-500/70 light:text-slate-400 flex items-center gap-1.5 pointer-events-none font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500/50 animate-ping" />
-              Tap screen to chant
+              {/* Gentle tap indicator */}
+              <div className="mt-4 text-[11px] uppercase tracking-widest text-slate-500/70 light:text-slate-400 flex items-center gap-1.5 pointer-events-none font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 animate-ping" />
+                Tap screen to cascade next drop
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Standard Zen Mode */
+            <div
+              onClick={handleNext}
+              className="flex-1 flex flex-col items-center justify-center p-2 sm:p-6 text-center cursor-pointer select-none active:scale-[0.99] transition-transform relative z-10 my-auto"
+            >
+              {/* Sacred glowing aura */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 sm:w-[28rem] h-72 sm:h-[28rem] bg-amber-500/8 rounded-full blur-3xl pointer-events-none animate-sacred-pulse" />
+
+              {/* Verse index */}
+              {currentItem.index && (
+                <span className="text-xs font-mono px-3 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-3 sm:mb-6 shadow-xs">
+                  #{currentItem.index}
+                </span>
+              )}
+
+              {/* Huge Sacred Sanskrit text with Granular Typography */}
+              <h1
+                className="font-sanskrit tracking-wide leading-relaxed drop-shadow-md text-center px-2 sm:px-4 transition-all"
+                style={sanskritStyles}
+              >
+                {currentItem.sanskrit}
+              </h1>
+
+              {/* Meaning card with Granular Typography */}
+              {naamJapaSettings.showMeaning && currentItem.meaning && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-4 sm:mt-6 px-4 py-3 rounded-2xl bg-slate-900/60 light:bg-white/90 border border-slate-800/80 light:border-amber-200/90 text-center leading-relaxed max-w-xl shadow-lg backdrop-blur-md"
+                >
+                  <div className="text-[10px] uppercase font-bold tracking-wider text-amber-500/70 mb-0.5">
+                    Meaning
+                  </div>
+                  <p style={meaningStyles}>{currentItem.meaning}</p>
+                </div>
+              )}
+
+              {/* Description card with Granular Typography */}
+              {naamJapaSettings.showDescription && currentItem.description && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-2.5 px-3.5 py-2 text-center max-w-lg leading-relaxed"
+                >
+                  <p style={descriptionStyles}>{currentItem.description}</p>
+                </div>
+              )}
+
+              {/* Gentle tap indicator */}
+              <div className="mt-6 sm:mt-8 text-[11px] uppercase tracking-widest text-slate-500/70 light:text-slate-400 flex items-center gap-1.5 pointer-events-none font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500/50 animate-ping" />
+                Tap screen to chant
+              </div>
+            </div>
+          )
         ) : (
           <div className="flex-1 flex items-center justify-center text-slate-400">
             No verses available.
@@ -512,10 +641,37 @@ export default function NaamJapaView() {
                 </div>
               )}
 
-              {/* Font Size & Display Toggles */}
+              {/* Animation Mode & Display Options */}
               <div>
                 <span className="block text-[11px] uppercase font-bold tracking-wider text-slate-400 light:text-slate-600 mb-1.5">
-                  Display Options
+                  Chant Display Mode
+                </span>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <button
+                    onClick={() => updateDripAnimationSettings({ naamJapaMode: 'card' })}
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                      dripAnimationSettings.naamJapaMode !== 'drip'
+                        ? 'border-amber-500 bg-amber-500/20 text-amber-300 font-bold'
+                        : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <span>🎴 Sacred Card</span>
+                  </button>
+                  <button
+                    onClick={() => updateDripAnimationSettings({ naamJapaMode: 'drip' })}
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                      dripAnimationSettings.naamJapaMode === 'drip'
+                        ? 'border-cyan-500 bg-cyan-500/20 text-cyan-300 font-bold shadow-xs'
+                        : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Droplet className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Falling Drops</span>
+                  </button>
+                </div>
+
+                <span className="block text-[11px] uppercase font-bold tracking-wider text-slate-400 light:text-slate-600 mb-1.5">
+                  Content Visibility
                 </span>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -544,30 +700,22 @@ export default function NaamJapaView() {
                 </div>
               </div>
 
-              {/* Font Size buttons */}
-              <div>
-                <span className="block text-[11px] uppercase font-bold tracking-wider text-slate-400 light:text-slate-600 mb-1.5">
-                  Sanskrit Text Size
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'normal', label: 'Medium' },
-                    { id: 'large', label: 'Large' },
-                    { id: 'xlarge', label: 'Extra Large' }
-                  ].map((sz) => (
-                    <button
-                      key={sz.id}
-                      onClick={() => updateNaamJapaSettings({ fontSize: sz.id })}
-                      className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-colors ${
-                        (naamJapaSettings.fontSize || 'large') === sz.id
-                          ? 'bg-amber-600 border-amber-500 text-white'
-                          : 'bg-slate-950/60 border-slate-800 text-slate-300 light:bg-amber-50 light:border-amber-200 light:text-slate-800'
-                      }`}
-                    >
-                      {sz.label}
-                    </button>
-                  ))}
+              {/* Customize Typography Shortcut */}
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-amber-400">Sacred Typography</div>
+                  <div className="text-[11px] text-slate-400">Custom fonts, sizes & colors for all 3 parts</div>
                 </div>
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    exitZenFullscreen();
+                    setActiveTab('settings');
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold transition-colors"
+                >
+                  Settings
+                </button>
               </div>
 
               {/* Session Counter & Exit Actions */}
@@ -670,6 +818,37 @@ export default function NaamJapaView() {
             </div>
           </div>
 
+          {/* Animation View Toggle: Card vs Falling Drops */}
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-400 mb-1">
+              Animation Mode
+            </span>
+            <div className="inline-flex rounded-lg bg-slate-950 light:bg-amber-100 p-0.5 border border-slate-800 light:border-amber-300">
+              <button
+                onClick={() => updateDripAnimationSettings({ naamJapaMode: 'card' })}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                  dripAnimationSettings.naamJapaMode !== 'drip'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 light:text-slate-600'
+                }`}
+              >
+                Card
+              </button>
+              <button
+                onClick={() => updateDripAnimationSettings({ naamJapaMode: 'drip' })}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+                  dripAnimationSettings.naamJapaMode === 'drip'
+                    ? 'bg-cyan-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 light:text-slate-600'
+                }`}
+                title="Falling drops animation (Dripping Tap)"
+              >
+                <Droplet className="w-3 h-3 text-cyan-300" />
+                Falling Drops
+              </button>
+            </div>
+          </div>
+
           {/* If Mode is Random: Scope Selection */}
           {naamJapaSettings.mode === 'random' && (
             <div className="flex flex-col">
@@ -705,9 +884,9 @@ export default function NaamJapaView() {
 
         </div>
 
-        {/* Visibility Toggles & Font Size Strip */}
+        {/* Visibility Toggles & Actions Strip */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 light:border-amber-200 text-xs">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => updateNaamJapaSettings({ showMeaning: !naamJapaSettings.showMeaning })}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors border ${
@@ -730,6 +909,14 @@ export default function NaamJapaView() {
             >
               {naamJapaSettings.showDescription ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
               <span>Description</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('settings')}
+              className="text-[11px] text-amber-400/90 hover:text-amber-300 underline decoration-amber-500/40 underline-offset-2 flex items-center gap-1 transition-colors ml-1"
+              title="Customize fonts, sizes and colors in Settings"
+            >
+              <span>Fonts & Colors</span>
             </button>
           </div>
 
@@ -762,82 +949,176 @@ export default function NaamJapaView() {
         </div>
       </div>
 
-      {/* Main Sacred Naam Card */}
+      {/* Main Sacred Naam Card / Falling Drops Stage */}
       {currentItem ? (
-        <div 
-          onClick={handleNext}
-          className="group cursor-pointer select-none relative overflow-hidden rounded-3xl bg-gradient-to-b from-slate-900/90 via-slate-900/70 to-slate-950/90 border border-amber-500/30 hover:border-amber-500/60 light:from-white light:via-amber-50/50 light:to-amber-100/40 light:border-amber-300 shadow-2xl p-6 sm:p-10 transition-all duration-300 flex flex-col items-center justify-between min-h-[380px] sm:min-h-[440px]"
-        >
-          {/* Sacred subtle glow effect */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-amber-500/10 transition-colors" />
+        dripAnimationSettings?.naamJapaMode === 'drip' ? (
+          /* =========================================================
+             FALLING DROPS VIEW (STANDARD VIEW)
+             ========================================================= */
+          <div 
+            onClick={handleNext}
+            className="group cursor-pointer select-none relative overflow-hidden rounded-3xl bg-gradient-to-b from-slate-950 via-slate-900/90 to-slate-950 border border-cyan-500/30 hover:border-cyan-500/60 light:from-cyan-50/50 light:via-white light:to-cyan-100/30 light:border-cyan-300 shadow-2xl p-6 sm:p-8 transition-all duration-300 flex flex-col items-center justify-between min-h-[460px] sm:min-h-[500px]"
+          >
+            {/* Top metadata tags */}
+            <div className="w-full flex items-center justify-between gap-2 z-10">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-cyan-500/15 text-cyan-300 light:text-cyan-800 border border-cyan-500/30 flex items-center gap-1">
+                  <Droplet className="w-3 h-3 text-cyan-400 animate-bounce" />
+                  {currentStotraTitle || 'Sacred Stream'}
+                </span>
+                {currentStotraDeity && (
+                  <span className="hidden sm:inline-block px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800/80 light:bg-cyan-100 text-slate-300 light:text-slate-700">
+                    {currentStotraDeity}
+                  </span>
+                )}
+              </div>
 
-          {/* Top metadata tags */}
-          <div className="w-full flex items-center justify-between gap-2 z-10">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-400 light:text-amber-800 border border-amber-500/30">
-                {currentStotraTitle || 'Sacred Text'}
+              <div className="flex items-center gap-2 text-xs font-mono text-cyan-400/80">
+                {currentItem.index && (
+                  <span className="px-2 py-0.5 rounded bg-slate-950/80 light:bg-white border border-cyan-900 light:border-cyan-200">
+                    #{currentItem.index}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Falling Drops Arena */}
+            <div className="w-full flex-1 relative flex flex-col items-center justify-start overflow-hidden py-4 my-2 min-h-[320px]">
+              {/* Dripping Tap Emitter */}
+              <div className="flex flex-col items-center mb-4 z-10">
+                <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 shadow-lg shadow-cyan-500/20">
+                  <Droplet className="w-4 h-4 fill-cyan-400/30 text-cyan-400" />
+                </div>
+                <div className="w-0.5 h-3 bg-gradient-to-b from-cyan-400/60 to-transparent" />
+              </div>
+
+              {/* Top static ready-to-fall line */}
+              <div
+                className="dripping-word-static z-10 text-center max-w-xl px-4"
+                style={sanskritStyles}
+              >
+                <div>{currentItem.sanskrit}</div>
+                {naamJapaSettings.showMeaning && currentItem.meaning && (
+                  <div
+                    style={meaningStyles}
+                    className="mt-2 text-xs sm:text-sm opacity-90 max-w-md mx-auto"
+                  >
+                    {currentItem.meaning}
+                  </div>
+                )}
+              </div>
+
+              {/* Active Falling Drops in Flight */}
+              {fallingDrops.map((drop) => (
+                <div
+                  key={drop.id}
+                  className="dripping-word-falling text-center max-w-xl px-4 pointer-events-none"
+                  style={{
+                    ...sanskritStyles,
+                    animationDuration: `${drop.durationMs}ms`,
+                  }}
+                >
+                  <div>{drop.sanskrit}</div>
+                  {dripAnimationSettings.naamJapaShowMeaningInDrip && drop.meaning && (
+                    <div
+                      style={meaningStyles}
+                      className="mt-2 text-xs sm:text-sm opacity-85 max-w-md mx-auto"
+                    >
+                      {drop.meaning}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom Tap Instruction */}
+            <div className="w-full flex items-center justify-between z-10 text-[11px] text-cyan-400/70 light:text-slate-600 pt-2 border-t border-slate-800/40 light:border-cyan-200/40">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                Tap card or press <kbd className="px-1 py-0.5 rounded bg-slate-800 text-cyan-200 font-mono">Space</kbd> to cascade drop
               </span>
-              {currentStotraDeity && (
-                <span className="hidden sm:inline-block px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800/80 light:bg-amber-100 text-slate-300 light:text-slate-700">
-                  {currentStotraDeity}
+              <span>Total Recitations: {naamJapaStats.totalCount}</span>
+            </div>
+          </div>
+        ) : (
+          /* =========================================================
+             SACRED CARD VIEW (STANDARD VIEW WITH 3-PART TYPOGRAPHY)
+             ========================================================= */
+          <div 
+            onClick={handleNext}
+            className="group cursor-pointer select-none relative overflow-hidden rounded-3xl bg-gradient-to-b from-slate-900/90 via-slate-900/70 to-slate-950/90 border border-amber-500/30 hover:border-amber-500/60 light:from-white light:via-amber-50/50 light:to-amber-100/40 light:border-amber-300 shadow-2xl p-6 sm:p-10 transition-all duration-300 flex flex-col items-center justify-between min-h-[380px] sm:min-h-[440px]"
+          >
+            {/* Sacred subtle glow effect */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-amber-500/10 transition-colors" />
+
+            {/* Top metadata tags */}
+            <div className="w-full flex items-center justify-between gap-2 z-10">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-400 light:text-amber-800 border border-amber-500/30">
+                  {currentStotraTitle || 'Sacred Text'}
                 </span>
+                {currentStotraDeity && (
+                  <span className="hidden sm:inline-block px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800/80 light:bg-amber-100 text-slate-300 light:text-slate-700">
+                    {currentStotraDeity}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs font-mono text-slate-400 light:text-slate-600">
+                {currentItem.index && (
+                  <span className="px-2 py-0.5 rounded bg-slate-950/80 light:bg-white border border-slate-800 light:border-amber-200">
+                    #{currentItem.index}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Middle: 3-Part Sacred Content */}
+            <div className="my-auto py-6 sm:py-8 text-center max-w-2xl z-10 w-full space-y-4">
+              <h2 
+                className="font-sanskrit tracking-wide leading-relaxed drop-shadow-sm transition-transform duration-200 group-hover:scale-[1.01]"
+                style={sanskritStyles}
+              >
+                {currentItem.sanskrit}
+              </h2>
+
+              {/* Meaning card */}
+              {naamJapaSettings.showMeaning && currentItem.meaning && (
+                <div 
+                  onClick={(e) => e.stopPropagation()} 
+                  className="mt-4 p-4 rounded-xl bg-slate-950/50 light:bg-white/80 border border-slate-800/80 light:border-amber-200/80 text-center leading-relaxed max-w-xl mx-auto shadow-sm"
+                >
+                  <div className="text-[10px] uppercase font-bold tracking-wider text-amber-500/70 mb-1">
+                    Meaning
+                  </div>
+                  <p style={meaningStyles}>{currentItem.meaning}</p>
+                </div>
+              )}
+
+              {/* Description / Bhashya card */}
+              {naamJapaSettings.showDescription && currentItem.description && (
+                <div 
+                  onClick={(e) => e.stopPropagation()} 
+                  className="p-3.5 rounded-xl bg-slate-950/30 light:bg-amber-50/50 border border-slate-800/50 light:border-amber-200/50 text-center leading-relaxed max-w-xl mx-auto"
+                >
+                  <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-0.5 not-italic">
+                    Commentary & Significance
+                  </div>
+                  <p style={descriptionStyles}>{currentItem.description}</p>
+                </div>
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-400 light:text-slate-600">
-              {currentItem.index && (
-                <span className="px-2 py-0.5 rounded bg-slate-950/80 light:bg-white border border-slate-800 light:border-amber-200">
-                  #{currentItem.index}
-                </span>
-              )}
+            {/* Bottom Tap Instruction */}
+            <div className="w-full flex items-center justify-between z-10 text-[11px] text-slate-500 light:text-slate-600 pt-2 border-t border-slate-800/40 light:border-amber-200/40">
+              <span className="hidden sm:inline">
+                Tap card or press <kbd className="px-1 py-0.5 rounded bg-slate-800 light:bg-amber-200 text-slate-200 light:text-slate-800 font-mono">Space</kbd> / <kbd className="px-1 py-0.5 rounded bg-slate-800 light:bg-amber-200 text-slate-200 light:text-slate-800 font-mono">→</kbd> for next
+              </span>
+              <span className="sm:hidden">Tap card to advance</span>
+              <span>Total Recitations: {naamJapaStats.totalCount}</span>
             </div>
           </div>
-
-          {/* Middle: Sanskrit Sacred Text */}
-          <div className="my-auto py-6 sm:py-8 text-center max-w-2xl z-10 w-full space-y-4">
-            <h2 
-              className={`font-sanskrit font-bold text-amber-400 light:text-amber-800 tracking-wide leading-relaxed drop-shadow-sm transition-transform duration-200 group-hover:scale-[1.01] ${fontSizeClass}`}
-              style={{ fontFamily: fontFamily }}
-            >
-              {currentItem.sanskrit}
-            </h2>
-
-            {/* Meaning card */}
-            {naamJapaSettings.showMeaning && currentItem.meaning && (
-              <div 
-                onClick={(e) => e.stopPropagation()} 
-                className="mt-4 p-4 rounded-xl bg-slate-950/50 light:bg-white/80 border border-slate-800/80 light:border-amber-200/80 text-center text-slate-200 light:text-slate-800 text-sm sm:text-base leading-relaxed max-w-xl mx-auto shadow-sm"
-              >
-                <div className="text-[10px] uppercase font-bold tracking-wider text-amber-500/70 mb-1">
-                  Meaning
-                </div>
-                <p>{currentItem.meaning}</p>
-              </div>
-            )}
-
-            {/* Description / Bhashya card */}
-            {naamJapaSettings.showDescription && currentItem.description && (
-              <div 
-                onClick={(e) => e.stopPropagation()} 
-                className="p-3.5 rounded-xl bg-slate-950/30 light:bg-amber-50/50 border border-slate-800/50 light:border-amber-200/50 text-center text-slate-400 light:text-slate-600 text-xs sm:text-sm italic leading-relaxed max-w-xl mx-auto"
-              >
-                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-0.5 not-italic">
-                  Commentary & Significance
-                </div>
-                <p>{currentItem.description}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Bottom Tap Instruction */}
-          <div className="w-full flex items-center justify-between z-10 text-[11px] text-slate-500 light:text-slate-600 pt-2 border-t border-slate-800/40 light:border-amber-200/40">
-            <span className="hidden sm:inline">
-              Tap card or press <kbd className="px-1 py-0.5 rounded bg-slate-800 light:bg-amber-200 text-slate-200 light:text-slate-800 font-mono">Space</kbd> / <kbd className="px-1 py-0.5 rounded bg-slate-800 light:bg-amber-200 text-slate-200 light:text-slate-800 font-mono">→</kbd> for next
-            </span>
-            <span className="sm:hidden">Tap card to advance</span>
-            <span>Total Recitations: {naamJapaStats.totalCount}</span>
-          </div>
-        </div>
+        )
       ) : (
         <div className="p-12 text-center text-slate-400">Loading sacred lines...</div>
       )}

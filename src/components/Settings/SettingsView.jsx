@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
+import TypographyEditor from './TypographyEditor';
+import DripSettings from './DripSettings';
 import {
   Sun,
   Moon,
@@ -26,6 +28,9 @@ export default function SettingsView() {
     setVibrateEnabled,
     fontFamily,
     setFontFamily,
+    naamJapaTypography,
+    sadhanaTypography,
+    dripAnimationSettings,
     isInstallable,
     installPWA,
     sadhanaMantras,
@@ -61,6 +66,9 @@ export default function SettingsView() {
       soundEnabled,
       vibrateEnabled,
       fontFamily,
+      naamJapaTypography,
+      sadhanaTypography,
+      dripAnimationSettings,
       sadhanaMantras,
       naamJapaStotras,
       naamJapaSettings,
@@ -93,6 +101,15 @@ export default function SettingsView() {
         }
         if (parsed.naamJapaStats) {
           localStorage.setItem('pashyanti_naamjapa_stats', JSON.stringify(parsed.naamJapaStats));
+        }
+        if (parsed.naamJapaTypography) {
+          localStorage.setItem('pashyanti_naamjapa_typography', JSON.stringify(parsed.naamJapaTypography));
+        }
+        if (parsed.sadhanaTypography) {
+          localStorage.setItem('pashyanti_sadhana_typography', JSON.stringify(parsed.sadhanaTypography));
+        }
+        if (parsed.dripAnimationSettings) {
+          localStorage.setItem('pashyanti_drip_settings', JSON.stringify(parsed.dripAnimationSettings));
         }
         if (parsed.theme) {
           localStorage.setItem('pashyanti_theme', parsed.theme);
@@ -226,37 +243,11 @@ export default function SettingsView() {
         </div>
       </div>
 
-      {/* 2. TYPOGRAPHY */}
-      <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 light:bg-white light:border-amber-200/90 shadow-sm space-y-4">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-amber-500 light:text-amber-700 flex items-center gap-2">
-          <Type className="w-4 h-4" />
-          Sacred Typography & Fonts
-        </h3>
+      {/* 2. SACRED TYPOGRAPHY & COLORS (3 PARTS OF NAAM JAPA & NORMAL JAPA) */}
+      <TypographyEditor />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {fonts.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => {
-                setFontFamily(f.id);
-                triggerFeedback('click');
-              }}
-              className={`p-3 rounded-xl border text-left transition-all ${
-                fontFamily === f.id
-                  ? 'border-amber-500 bg-amber-500/10 text-amber-400 font-semibold'
-                  : 'border-slate-800 hover:border-slate-700 bg-slate-950/30 text-slate-300 light:border-amber-200 light:bg-amber-50/40 light:text-slate-700'
-              }`}
-            >
-              <div className="text-xs font-sans text-slate-400 light:text-slate-500 mb-1">
-                {f.name}
-              </div>
-              <div className="text-lg text-slate-100 light:text-slate-900" style={{ fontFamily: f.id }}>
-                {f.sample}
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* 3. FALLING DROPS ("DRIPPING TAP") ANIMATION CONTROLS */}
+      <DripSettings />
 
       {/* 3. SOUND & HAPTIC FEEDBACK */}
       <div className="p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 light:bg-white light:border-amber-200/90 shadow-sm space-y-4">

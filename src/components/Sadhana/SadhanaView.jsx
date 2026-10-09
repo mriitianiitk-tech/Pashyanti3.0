@@ -11,7 +11,8 @@ import {
   Sparkles,
   Eye,
   Sliders,
-  X
+  X,
+  Droplet
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -24,6 +25,11 @@ export default function SadhanaView() {
     resetSadhanaCount,
     triggerFeedback,
     fontFamily,
+    sadhanaTypography,
+    updateSadhanaTypography,
+    dripAnimationSettings,
+    updateDripAnimationSettings,
+    setActiveTab,
     isZenFullscreen,
     enterZenFullscreen,
     exitZenFullscreen,
@@ -36,6 +42,36 @@ export default function SadhanaView() {
   const [focusView, setFocusView] = useState('all'); // 'all' | 'hide-completed' | 'active-only' | 'word-only'
   const [sessionCount, setSessionCount] = useState(0);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [fallingDrops, setFallingDrops] = useState([]);
+
+  // Granular styling for the parts of Normal Japa (Sadhana)
+  const activeWordStyles = useMemo(() => ({
+    fontFamily: sadhanaTypography?.activeWord?.fontFamily || fontFamily,
+    fontSize: `${sadhanaTypography?.activeWord?.fontSize || 32}px`,
+    color: sadhanaTypography?.activeWord?.color || '#f59e0b',
+    fontWeight: sadhanaTypography?.activeWord?.fontWeight || 'bold',
+    fontStyle: sadhanaTypography?.activeWord?.fontStyle || 'normal',
+    textShadow: sadhanaTypography?.activeWord?.glow
+      ? `0 0 16px ${sadhanaTypography?.activeWord?.color || '#f59e0b'}80`
+      : 'none',
+  }), [sadhanaTypography, fontFamily]);
+
+  const completedWordStyles = useMemo(() => ({
+    color: sadhanaTypography?.completedWords?.color || '#64748b',
+    opacity: sadhanaTypography?.completedWords?.opacity ?? 0.4,
+  }), [sadhanaTypography]);
+
+  const upcomingWordStyles = useMemo(() => ({
+    color: sadhanaTypography?.upcomingWords?.color || '#e2e8f0',
+    opacity: sadhanaTypography?.upcomingWords?.opacity ?? 0.8,
+  }), [sadhanaTypography]);
+
+  const headerStyles = useMemo(() => ({
+    fontFamily: sadhanaTypography?.header?.fontFamily || 'Martel',
+    fontSize: `${sadhanaTypography?.header?.fontSize || 18}px`,
+    color: sadhanaTypography?.header?.color || '#f59e0b',
+    fontWeight: sadhanaTypography?.header?.fontWeight || 'bold',
+  }), [sadhanaTypography]);
 
   // Active mantra object
   const mantra = useMemo(() => {
@@ -69,6 +105,46 @@ export default function SadhanaView() {
     if (!curPara) return;
     const curLine = curPara[activeLineIndex];
     if (!curLine) return;
+
+    // Spawn falling droplet if in Falling Drops mode
+    if (dripAnimationSettings?.sadhanaMode === 'drip') {
+      const dropText = (dripAnimationSettings?.sadhanaDripUnit === 'phrase')
+        ? curLine.join(' ')
+        : (curLine[activeWordIndex] || '');
+
+      if (dropText) {
+        const dropId = Date.now() + Math.random();
+        let duration = 2000;
+        if (dripAnimationSettings.speedMode === 'fast') duration = 1200;
+        else if (dripAnimationSettings.speedMode === 'slow') duration = 3000;
+        else if (dripAnimationSettings.speedMode === 'manual') duration = dripAnimationSettings.customDurationMs || 2000;
+
+        setFallingDrops((prev) => [
+          ...prev.slice(-3),
+          { id: dropId, text: dropText, durationMs: duration }
+        ]);
+        setTimeout(() => {
+          setFallingDrops((prev) => prev.filter((d) => d.id !== dropId));
+        }, duration + 200);
+      }
+
+      // If unit is phrase, step by phrase
+      if (dripAnimationSettings?.sadhanaDripUnit === 'phrase') {
+        if (activeLineIndex < curPara.length - 1) {
+          setActiveLineIndex(activeLineIndex + 1);
+          setActiveWordIndex(0);
+        } else {
+          if (activeParaIndex < parsedStructure.length - 1) {
+            setActiveParaIndex(activeParaIndex + 1);
+            setActiveLineIndex(0);
+            setActiveWordIndex(0);
+          } else {
+            handleRecitationComplete();
+          }
+        }
+        return;
+      }
+    }
 
     // Advance word
     if (activeWordIndex < curLine.length - 1) {
@@ -170,7 +246,10 @@ export default function SadhanaView() {
         <div className="w-full flex items-center justify-between z-20 shrink-0">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/70 border border-slate-800 light:bg-white/90 light:border-amber-200 backdrop-blur-md shadow-xs">
             <span className="text-amber-500 font-bold text-sm">ॐ</span>
-            <span className="text-xs font-semibold text-slate-200 light:text-slate-800 truncate max-w-[150px] sm:max-w-[280px]">
+            <span 
+              className="truncate max-w-[150px] sm:max-w-[280px]"
+              style={headerStyles}
+            >
               {mantra?.title || 'Sadhana Mantra'}
             </span>
             {mantra?.deity && (
@@ -196,79 +275,142 @@ export default function SadhanaView() {
           </div>
         </div>
 
-        {/* Central Immersive Chanting Canvas (Tap anywhere to advance word/line) */}
-        <div
-          onClick={stepForward}
-          className="flex-1 flex flex-col items-center justify-center p-2 sm:p-6 text-center cursor-pointer select-none active:scale-[0.99] transition-transform relative z-10 my-auto overflow-y-auto max-h-[75vh]"
-        >
-          {/* Sacred glowing aura */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 sm:w-[28rem] h-72 sm:h-[28rem] bg-amber-500/8 rounded-full blur-3xl pointer-events-none animate-sacred-pulse" />
+        {/* Central Immersive Chanting Canvas */}
+        {dripAnimationSettings?.sadhanaMode === 'drip' ? (
+          /* =========================================================
+             FALLING DROPS ZEN STAGE
+             ========================================================= */
+          <div
+            onClick={stepForward}
+            className="flex-1 flex flex-col items-center justify-start p-4 text-center cursor-pointer select-none active:scale-[0.99] transition-transform relative z-10 my-auto overflow-hidden w-full max-w-2xl mx-auto min-h-[60vh]"
+          >
+            {/* Sacred glowing aura */}
+            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="max-w-2xl w-full space-y-6 z-10">
-            {parsedStructure.map((paragraph, pIdx) => {
-              if (focusView === 'active-only' && pIdx !== activeParaIndex) return null;
-              if (focusView === 'hide-completed' && pIdx < activeParaIndex) return null;
-              if (focusView === 'word-only' && pIdx !== activeParaIndex) return null;
+            {/* Dripping Tap Emitter */}
+            <div className="flex flex-col items-center mt-4 mb-6 z-10">
+              <div className="w-10 h-10 rounded-full bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 shadow-lg shadow-cyan-500/20">
+                <Droplet className="w-5 h-5 fill-cyan-400/30 text-cyan-400 animate-pulse" />
+              </div>
+              <div className="w-0.5 h-4 bg-gradient-to-b from-cyan-400/60 to-transparent" />
+            </div>
 
-              return (
-                <div key={pIdx} className="space-y-4">
-                  {paragraph.map((lineWords, lIdx) => {
-                    const isCurrentLine = pIdx === activeParaIndex && lIdx === activeLineIndex;
-                    const isCompletedLine =
-                      pIdx < activeParaIndex || (pIdx === activeParaIndex && lIdx < activeLineIndex);
-
-                    if (focusView === 'active-only' && !isCurrentLine) return null;
-                    if (focusView === 'hide-completed' && isCompletedLine) return null;
-                    if (focusView === 'word-only' && !isCurrentLine) return null;
-
-                    return (
-                      <div
-                        key={lIdx}
-                        className={`leading-relaxed transition-all duration-200 ${
-                          isCurrentLine
-                            ? 'opacity-100 scale-100'
-                            : isCompletedLine
-                            ? 'opacity-35'
-                            : 'opacity-50'
-                        }`}
-                        style={{ fontFamily }}
-                      >
-                        {lineWords.map((word, wIdx) => {
-                          const isCurrentWord = isCurrentLine && wIdx === activeWordIndex;
-                          const isCompletedWord =
-                            isCompletedLine || (isCurrentLine && wIdx < activeWordIndex);
-
-                          if (focusView === 'word-only' && !isCurrentWord) return null;
-
-                          return (
-                            <span
-                              key={wIdx}
-                              className={`japa-word mx-1 sm:mx-2 py-1 px-1.5 rounded-lg transition-all text-2xl sm:text-3xl md:text-4xl ${
-                                isCurrentWord
-                                  ? 'word-active text-amber-400 light:text-amber-700 bg-amber-500/20 font-bold shadow-sm'
-                                  : isCompletedWord
-                                  ? 'text-slate-500 light:text-slate-400'
-                                  : 'text-slate-300 light:text-slate-800'
-                              }`}
-                            >
-                              {word}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
+            {/* Top static ready-to-fall text */}
+            <div
+              className="dripping-word-static z-10 text-center max-w-xl px-4"
+              style={activeWordStyles}
+            >
+              <div>
+                {dripAnimationSettings?.sadhanaDripUnit === 'phrase'
+                  ? (parsedStructure[activeParaIndex]?.[activeLineIndex] || []).join(' ')
+                  : (parsedStructure[activeParaIndex]?.[activeLineIndex]?.[activeWordIndex] || '')}
+              </div>
+              {dripAnimationSettings?.sadhanaDripUnit === 'word' && (
+                <div className="mt-2 text-xs sm:text-sm text-slate-400/80 light:text-slate-600 max-w-md mx-auto">
+                  {(parsedStructure[activeParaIndex]?.[activeLineIndex] || []).join(' ')}
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </div>
 
-          {/* Gentle tap indicator */}
-          <div className="mt-8 text-[11px] uppercase tracking-widest text-slate-500/70 light:text-slate-400 flex items-center gap-1.5 pointer-events-none font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500/50 animate-ping" />
-            Tap screen to advance chant
+            {/* Active Falling Drops in flight */}
+            {fallingDrops.map((drop) => (
+              <div
+                key={drop.id}
+                className="dripping-word-falling text-center max-w-xl px-4 pointer-events-none"
+                style={{
+                  ...activeWordStyles,
+                  animationDuration: `${drop.durationMs}ms`,
+                }}
+              >
+                <div>{drop.text}</div>
+              </div>
+            ))}
+
+            {/* Gentle tap indicator */}
+            <div className="mt-auto mb-4 text-[11px] uppercase tracking-widest text-slate-500/70 light:text-slate-400 flex items-center gap-1.5 pointer-events-none font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/60 animate-ping" />
+              Tap screen to cascade next drop
+            </div>
           </div>
-        </div>
+        ) : (
+          /* =========================================================
+             STANDARD VERSE VIEW (WITH GRANULAR TYPOGRAPHY)
+             ========================================================= */
+          <div
+            onClick={stepForward}
+            className="flex-1 flex flex-col items-center justify-center p-2 sm:p-6 text-center cursor-pointer select-none active:scale-[0.99] transition-transform relative z-10 my-auto overflow-y-auto max-h-[75vh]"
+          >
+            {/* Sacred glowing aura */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 sm:w-[28rem] h-72 sm:h-[28rem] bg-amber-500/8 rounded-full blur-3xl pointer-events-none animate-sacred-pulse" />
+
+            <div className="max-w-2xl w-full space-y-6 z-10">
+              {parsedStructure.map((paragraph, pIdx) => {
+                if (focusView === 'active-only' && pIdx !== activeParaIndex) return null;
+                if (focusView === 'hide-completed' && pIdx < activeParaIndex) return null;
+                if (focusView === 'word-only' && pIdx !== activeParaIndex) return null;
+
+                return (
+                  <div key={pIdx} className="space-y-4">
+                    {paragraph.map((lineWords, lIdx) => {
+                      const isCurrentLine = pIdx === activeParaIndex && lIdx === activeLineIndex;
+                      const isCompletedLine =
+                        pIdx < activeParaIndex || (pIdx === activeParaIndex && lIdx < activeLineIndex);
+
+                      if (focusView === 'active-only' && !isCurrentLine) return null;
+                      if (focusView === 'hide-completed' && isCompletedLine) return null;
+                      if (focusView === 'word-only' && !isCurrentLine) return null;
+
+                      return (
+                        <div
+                          key={lIdx}
+                          className={`leading-relaxed transition-all duration-200 ${
+                            isCurrentLine
+                              ? 'opacity-100 scale-100'
+                              : isCompletedLine
+                              ? 'opacity-40'
+                              : 'opacity-70'
+                          }`}
+                        >
+                          {lineWords.map((word, wIdx) => {
+                            const isCurrentWord = isCurrentLine && wIdx === activeWordIndex;
+                            const isCompletedWord =
+                              isCompletedLine || (isCurrentLine && wIdx < activeWordIndex);
+
+                            if (focusView === 'word-only' && !isCurrentWord) return null;
+
+                            return (
+                              <span
+                                key={wIdx}
+                                className={`japa-word mx-1 sm:mx-2 py-1 px-1.5 rounded-lg transition-all text-2xl sm:text-3xl md:text-4xl ${
+                                  isCurrentWord ? 'word-active' : ''
+                                }`}
+                                style={
+                                  isCurrentWord
+                                    ? activeWordStyles
+                                    : isCompletedWord
+                                    ? completedWordStyles
+                                    : upcomingWordStyles
+                                }
+                              >
+                                {word}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Gentle tap indicator */}
+            <div className="mt-8 text-[11px] uppercase tracking-widest text-slate-500/70 light:text-slate-400 flex items-center gap-1.5 pointer-events-none font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500/50 animate-ping" />
+              Tap screen to advance chant
+            </div>
+          </div>
+        )}
 
         {/* Floating Bottom Dock */}
         <div className="flex items-center justify-center gap-2 sm:gap-3 z-20 shrink-0 pt-2 pb-1">
@@ -362,31 +504,109 @@ export default function SadhanaView() {
                 </select>
               </div>
 
-              {/* Focus View Selector */}
+              {/* Chant Display Mode */}
               <div>
                 <span className="block text-[11px] uppercase font-bold tracking-wider text-slate-400 light:text-slate-600 mb-1.5">
-                  Focus View Mode
+                  Chant Display Mode
                 </span>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {[
-                    { id: 'all', label: 'All Text' },
-                    { id: 'hide-completed', label: 'Remaining' },
-                    { id: 'active-only', label: 'Current Line' },
-                    { id: 'word-only', label: 'Word by Word' }
-                  ].map((f) => (
-                    <button
-                      key={f.id}
-                      onClick={() => setFocusView(f.id)}
-                      className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-colors ${
-                        focusView === f.id
-                          ? 'bg-amber-600 border-amber-500 text-white'
-                          : 'bg-slate-950/60 border-slate-800 text-slate-300 light:bg-amber-50 light:border-amber-200 light:text-slate-800'
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <button
+                    onClick={() => updateDripAnimationSettings({ sadhanaMode: 'verse' })}
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                      dripAnimationSettings.sadhanaMode !== 'drip'
+                        ? 'border-amber-500 bg-amber-500/20 text-amber-300 font-bold'
+                        : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <span>📜 Verse View</span>
+                  </button>
+                  <button
+                    onClick={() => updateDripAnimationSettings({ sadhanaMode: 'drip' })}
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                      dripAnimationSettings.sadhanaMode === 'drip'
+                        ? 'border-cyan-500 bg-cyan-500/20 text-cyan-300 font-bold shadow-xs'
+                        : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Droplet className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Falling Drops</span>
+                  </button>
                 </div>
+
+                {dripAnimationSettings.sadhanaMode === 'drip' && (
+                  <div className="mt-2 p-2 rounded-xl bg-cyan-950/30 border border-cyan-800/40 flex items-center justify-between text-xs">
+                    <span className="text-cyan-300 font-medium">Drop Unit:</span>
+                    <div className="inline-flex rounded-lg bg-slate-950 p-0.5 border border-slate-800">
+                      <button
+                        onClick={() => updateDripAnimationSettings({ sadhanaDripUnit: 'word' })}
+                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                          dripAnimationSettings.sadhanaDripUnit !== 'phrase'
+                            ? 'bg-cyan-600 text-white'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        Word
+                      </button>
+                      <button
+                        onClick={() => updateDripAnimationSettings({ sadhanaDripUnit: 'phrase' })}
+                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                          dripAnimationSettings.sadhanaDripUnit === 'phrase'
+                            ? 'bg-cyan-600 text-white'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        Phrase
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Focus View Selector (in Verse mode) */}
+              {dripAnimationSettings.sadhanaMode !== 'drip' && (
+                <div>
+                  <span className="block text-[11px] uppercase font-bold tracking-wider text-slate-400 light:text-slate-600 mb-1.5">
+                    Focus View Mode
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: 'all', label: 'All Text' },
+                      { id: 'hide-completed', label: 'Remaining' },
+                      { id: 'active-only', label: 'Current Line' },
+                      { id: 'word-only', label: 'Word by Word' }
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => setFocusView(f.id)}
+                        className={`py-2 px-2 rounded-xl text-xs font-semibold border transition-colors ${
+                          focusView === f.id
+                            ? 'bg-amber-600 border-amber-500 text-white'
+                            : 'bg-slate-950/60 border-slate-800 text-slate-300 light:bg-amber-50 light:border-amber-200 light:text-slate-800'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Customize Typography Shortcut */}
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold text-amber-400">Japa Typography</div>
+                  <div className="text-[11px] text-slate-400">Custom fonts, sizes & colors for all words</div>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    exitZenFullscreen();
+                    setActiveTab('settings');
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold transition-colors"
+                >
+                  Settings
+                </button>
               </div>
 
               {/* Actions */}
@@ -489,30 +709,100 @@ export default function SadhanaView() {
           </div>
         </div>
 
-        {/* Focus Mode selection strip */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 mt-3 border-t border-slate-800/80 light:border-amber-200 text-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-slate-400 light:text-slate-600 font-medium">Focus View:</span>
-            <div className="inline-flex rounded-lg bg-slate-950 light:bg-amber-100 p-0.5 border border-slate-800 light:border-amber-300">
-              {[
-                { id: 'all', label: 'All' },
-                { id: 'hide-completed', label: 'Remaining' },
-                { id: 'active-only', label: 'Current Line' },
-                { id: 'word-only', label: 'Word' }
-              ].map((f) => (
+        {/* Mode & Focus View Strip */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 mt-3 border-t border-slate-800/80 light:border-amber-200 text-xs">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Animation Mode Toggle */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-cyan-400 font-semibold">Mode:</span>
+              <div className="inline-flex rounded-lg bg-slate-950 light:bg-amber-100 p-0.5 border border-slate-800 light:border-amber-300">
                 <button
-                  key={f.id}
-                  onClick={() => setFocusView(f.id)}
+                  onClick={() => updateDripAnimationSettings({ sadhanaMode: 'verse' })}
                   className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
-                    focusView === f.id
-                      ? 'bg-amber-600 text-white shadow-xs'
+                    dripAnimationSettings.sadhanaMode !== 'drip'
+                      ? 'bg-amber-600 text-white shadow-xs font-semibold'
                       : 'text-slate-400 hover:text-slate-200 light:text-slate-600'
                   }`}
                 >
-                  {f.label}
+                  Verse
                 </button>
-              ))}
+                <button
+                  onClick={() => updateDripAnimationSettings({ sadhanaMode: 'drip' })}
+                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors flex items-center gap-1 ${
+                    dripAnimationSettings.sadhanaMode === 'drip'
+                      ? 'bg-cyan-600 text-white shadow-xs font-semibold'
+                      : 'text-slate-400 hover:text-slate-200 light:text-slate-600'
+                  }`}
+                  title="Falling Drops Animation"
+                >
+                  <Droplet className="w-3 h-3 text-cyan-300" />
+                  Falling Drops
+                </button>
+              </div>
             </div>
+
+            {/* Drop Unit Toggle (if in drip mode) */}
+            {dripAnimationSettings.sadhanaMode === 'drip' ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-400 light:text-slate-600">Unit:</span>
+                <div className="inline-flex rounded-lg bg-slate-950 light:bg-amber-100 p-0.5 border border-slate-800 light:border-amber-300">
+                  <button
+                    onClick={() => updateDripAnimationSettings({ sadhanaDripUnit: 'word' })}
+                    className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                      dripAnimationSettings.sadhanaDripUnit !== 'phrase'
+                        ? 'bg-cyan-600 text-white'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Word
+                  </button>
+                  <button
+                    onClick={() => updateDripAnimationSettings({ sadhanaDripUnit: 'phrase' })}
+                    className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                      dripAnimationSettings.sadhanaDripUnit === 'phrase'
+                        ? 'bg-cyan-600 text-white'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Phrase
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Focus View Selector (in Verse mode) */
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-400 light:text-slate-600 font-medium">Focus:</span>
+                <div className="inline-flex rounded-lg bg-slate-950 light:bg-amber-100 p-0.5 border border-slate-800 light:border-amber-300">
+                  {[
+                    { id: 'all', label: 'All' },
+                    { id: 'hide-completed', label: 'Remaining' },
+                    { id: 'active-only', label: 'Line' },
+                    { id: 'word-only', label: 'Word' }
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => setFocusView(f.id)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                        focusView === f.id
+                          ? 'bg-amber-600 text-white shadow-xs font-semibold'
+                          : 'text-slate-400 hover:text-slate-200 light:text-slate-600'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Link to Typography Settings */}
+            <button
+              onClick={() => setActiveTab('settings')}
+              className="text-[11px] text-amber-400/90 hover:text-amber-300 underline decoration-amber-500/40 underline-offset-2 flex items-center gap-1 transition-colors ml-1"
+              title="Customize fonts, sizes and colors in Settings"
+            >
+              <span>Fonts & Colors</span>
+            </button>
           </div>
 
           <div className="text-[11px] text-slate-500 light:text-slate-600 font-mono">
@@ -521,75 +811,156 @@ export default function SadhanaView() {
         </div>
       </div>
 
-      {/* Main Recitation Stage (Tap anywhere to advance) */}
-      <div
-        onClick={stepForward}
-        className="group cursor-pointer select-none relative overflow-hidden rounded-3xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/50 light:bg-white light:border-amber-200 shadow-2xl p-6 sm:p-10 transition-all flex flex-col items-center justify-center min-h-[340px] sm:min-h-[400px] text-center"
-      >
-        <div className="max-w-2xl w-full space-y-6 z-10">
-          {parsedStructure.map((paragraph, pIdx) => {
-            if (focusView === 'active-only' && pIdx !== activeParaIndex) return null;
-            if (focusView === 'hide-completed' && pIdx < activeParaIndex) return null;
-            if (focusView === 'word-only' && pIdx !== activeParaIndex) return null;
+      {/* Main Recitation Stage (Verse view or Falling drops) */}
+      {dripAnimationSettings?.sadhanaMode === 'drip' ? (
+        /* =========================================================
+           FALLING DROPS STANDARD STAGE
+           ========================================================= */
+        <div
+          onClick={stepForward}
+          className="group cursor-pointer select-none relative overflow-hidden rounded-3xl bg-gradient-to-b from-slate-950 via-slate-900/95 to-slate-950 border border-cyan-500/30 hover:border-cyan-500/60 light:from-cyan-50/40 light:via-white light:to-cyan-100/30 light:border-cyan-300 shadow-2xl p-6 sm:p-8 transition-all flex flex-col items-center justify-between min-h-[440px] sm:min-h-[480px] text-center"
+        >
+          {/* Top header tag */}
+          <div className="w-full flex items-center justify-between gap-2 z-10">
+            <span 
+              className="px-2.5 py-1 rounded-full text-xs font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 flex items-center gap-1"
+              style={headerStyles}
+            >
+              <Droplet className="w-3.5 h-3.5 text-cyan-400 animate-bounce" />
+              {mantra?.title || 'Sadhana Stream'}
+              {mantra?.deity && ` • ${mantra.deity}`}
+            </span>
+            <span className="text-xs font-mono text-cyan-400/80">
+              Chant #{mantra?.chants || 0}
+            </span>
+          </div>
 
-            return (
-              <div key={pIdx} className="space-y-3">
-                {paragraph.map((lineWords, lIdx) => {
-                  const isCurrentLine = pIdx === activeParaIndex && lIdx === activeLineIndex;
-                  const isCompletedLine =
-                    pIdx < activeParaIndex || (pIdx === activeParaIndex && lIdx < activeLineIndex);
-
-                  if (focusView === 'active-only' && !isCurrentLine) return null;
-                  if (focusView === 'hide-completed' && isCompletedLine) return null;
-                  if (focusView === 'word-only' && !isCurrentLine) return null;
-
-                  return (
-                    <div
-                      key={lIdx}
-                      className={`leading-relaxed transition-all duration-200 ${
-                        isCurrentLine
-                          ? 'opacity-100 scale-100'
-                          : isCompletedLine
-                          ? 'opacity-35 line-through-none'
-                          : 'opacity-50'
-                      }`}
-                      style={{ fontFamily }}
-                    >
-                      {lineWords.map((word, wIdx) => {
-                        const isCurrentWord = isCurrentLine && wIdx === activeWordIndex;
-                        const isCompletedWord =
-                          isCompletedLine || (isCurrentLine && wIdx < activeWordIndex);
-
-                        if (focusView === 'word-only' && !isCurrentWord) return null;
-
-                        return (
-                          <span
-                            key={wIdx}
-                            className={`japa-word mx-1.5 sm:mx-2 py-0.5 rounded px-1 transition-all text-xl sm:text-2xl md:text-3xl ${
-                              isCurrentWord
-                                ? 'word-active text-amber-400 light:text-amber-700 bg-amber-500/15'
-                                : isCompletedWord
-                                ? 'text-slate-400 light:text-slate-400'
-                                : 'text-slate-200 light:text-slate-800'
-                            }`}
-                          >
-                            {word}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
+          {/* Falling Drops Arena */}
+          <div className="w-full flex-1 relative flex flex-col items-center justify-start overflow-hidden py-4 my-2 min-h-[300px]">
+            {/* Dripping Tap Emitter */}
+            <div className="flex flex-col items-center mb-4 z-10">
+              <div className="w-9 h-9 rounded-full bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 shadow-lg shadow-cyan-500/20">
+                <Droplet className="w-4 h-4 fill-cyan-400/30 text-cyan-400" />
               </div>
-            );
-          })}
-        </div>
+              <div className="w-0.5 h-3.5 bg-gradient-to-b from-cyan-400/60 to-transparent" />
+            </div>
 
-        {/* Subtle footer hint */}
-        <div className="absolute bottom-3 left-0 right-0 text-center text-[10px] text-slate-500 light:text-slate-500 pointer-events-none">
-          Tap card or press Space to step forward • Left arrow to step back
+            {/* Top static ready-to-fall text */}
+            <div
+              className="dripping-word-static z-10 text-center max-w-xl px-4"
+              style={activeWordStyles}
+            >
+              <div>
+                {dripAnimationSettings?.sadhanaDripUnit === 'phrase'
+                  ? (parsedStructure[activeParaIndex]?.[activeLineIndex] || []).join(' ')
+                  : (parsedStructure[activeParaIndex]?.[activeLineIndex]?.[activeWordIndex] || '')}
+              </div>
+              {dripAnimationSettings?.sadhanaDripUnit === 'word' && (
+                <div className="mt-2 text-xs sm:text-sm text-slate-400/80 light:text-slate-600 max-w-md mx-auto">
+                  {(parsedStructure[activeParaIndex]?.[activeLineIndex] || []).join(' ')}
+                </div>
+              )}
+            </div>
+
+            {/* Active Falling Drops in flight */}
+            {fallingDrops.map((drop) => (
+              <div
+                key={drop.id}
+                className="dripping-word-falling text-center max-w-xl px-4 pointer-events-none"
+                style={{
+                  ...activeWordStyles,
+                  animationDuration: `${drop.durationMs}ms`,
+                }}
+              >
+                <div>{drop.text}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Subtle footer hint */}
+          <div className="w-full flex items-center justify-between z-10 text-[11px] text-cyan-400/70 light:text-slate-600 pt-2 border-t border-slate-800/40 light:border-cyan-200/40">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+              Tap card or press <kbd className="px-1 py-0.5 rounded bg-slate-800 text-cyan-200 font-mono">Space</kbd> to cascade drop
+            </span>
+            <span>Total Recitations: {mantra?.chants || 0}</span>
+          </div>
         </div>
-      </div>
+      ) : (
+        /* =========================================================
+           STANDARD VERSE STAGE (WITH GRANULAR TYPOGRAPHY)
+           ========================================================= */
+        <div
+          onClick={stepForward}
+          className="group cursor-pointer select-none relative overflow-hidden rounded-3xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/50 light:bg-white light:border-amber-200 shadow-2xl p-6 sm:p-10 transition-all flex flex-col items-center justify-center min-h-[340px] sm:min-h-[400px] text-center"
+        >
+          <div className="max-w-2xl w-full space-y-6 z-10">
+            {parsedStructure.map((paragraph, pIdx) => {
+              if (focusView === 'active-only' && pIdx !== activeParaIndex) return null;
+              if (focusView === 'hide-completed' && pIdx < activeParaIndex) return null;
+              if (focusView === 'word-only' && pIdx !== activeParaIndex) return null;
+
+              return (
+                <div key={pIdx} className="space-y-3">
+                  {paragraph.map((lineWords, lIdx) => {
+                    const isCurrentLine = pIdx === activeParaIndex && lIdx === activeLineIndex;
+                    const isCompletedLine =
+                      pIdx < activeParaIndex || (pIdx === activeParaIndex && lIdx < activeLineIndex);
+
+                    if (focusView === 'active-only' && !isCurrentLine) return null;
+                    if (focusView === 'hide-completed' && isCompletedLine) return null;
+                    if (focusView === 'word-only' && !isCurrentLine) return null;
+
+                    return (
+                      <div
+                        key={lIdx}
+                        className={`leading-relaxed transition-all duration-200 ${
+                          isCurrentLine
+                            ? 'opacity-100 scale-100'
+                            : isCompletedLine
+                            ? 'opacity-40'
+                            : 'opacity-70'
+                        }`}
+                      >
+                        {lineWords.map((word, wIdx) => {
+                          const isCurrentWord = isCurrentLine && wIdx === activeWordIndex;
+                          const isCompletedWord =
+                            isCompletedLine || (isCurrentLine && wIdx < activeWordIndex);
+
+                          if (focusView === 'word-only' && !isCurrentWord) return null;
+
+                          return (
+                            <span
+                              key={wIdx}
+                              className={`japa-word mx-1.5 sm:mx-2 py-0.5 rounded px-1 transition-all text-xl sm:text-2xl md:text-3xl ${
+                                isCurrentWord ? 'word-active' : ''
+                              }`}
+                              style={
+                                isCurrentWord
+                                  ? activeWordStyles
+                                  : isCompletedWord
+                                  ? completedWordStyles
+                                  : upcomingWordStyles
+                              }
+                            >
+                              {word}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Subtle footer hint */}
+          <div className="absolute bottom-3 left-0 right-0 text-center text-[10px] text-slate-500 light:text-slate-500 pointer-events-none">
+            Tap card or press Space to step forward • Left arrow to step back
+          </div>
+        </div>
+      )}
 
       {/* Floating Bottom Stepper Controls */}
       <div className="flex items-center justify-center gap-3">

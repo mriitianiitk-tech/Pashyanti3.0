@@ -1,5 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { initialSadhanaMantras, initialNaamJapaStotras } from '../data/initialData';
+import {
+  AVAILABLE_FONTS,
+  PRESET_COLORS,
+  defaultNaamJapaTypography,
+  defaultSadhanaTypography,
+  defaultDripAnimationSettings
+} from '../data/typographySettings';
 import { playTibetanBowlChime, playSubtleClick, triggerHaptic } from '../utils/audio';
 import {
   authenticateWithGoogle,
@@ -47,13 +54,57 @@ export function AppProvider({ children }) {
     }
   });
 
-  // Typography & Aesthetics
+  // Global legacy typography & aesthetics fallback
   const [fontFamily, setFontFamily] = useState(() => {
     return localStorage.getItem('pashyanti_font') || 'Martel';
   });
 
   const [accentColor, setAccentColor] = useState(() => {
     return localStorage.getItem('pashyanti_accent') || 'saffron'; // saffron, indigo, sage, temple
+  });
+
+  // Granular Typography for Naam Japa (3 Parts: Sanskrit, Meaning, Description)
+  const [naamJapaTypography, setNaamJapaTypography] = useState(() => {
+    const stored = localStorage.getItem('pashyanti_naamjapa_typography');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        return {
+          sanskrit: { ...defaultNaamJapaTypography.sanskrit, ...(parsed.sanskrit || {}) },
+          meaning: { ...defaultNaamJapaTypography.meaning, ...(parsed.meaning || {}) },
+          description: { ...defaultNaamJapaTypography.description, ...(parsed.description || {}) },
+        };
+      } catch (e) { }
+    }
+    return defaultNaamJapaTypography;
+  });
+
+  // Granular Typography for Normal Japa / Sadhana (Active word, Completed words, Upcoming words, Header)
+  const [sadhanaTypography, setSadhanaTypography] = useState(() => {
+    const stored = localStorage.getItem('pashyanti_sadhana_typography');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        return {
+          activeWord: { ...defaultSadhanaTypography.activeWord, ...(parsed.activeWord || {}) },
+          completedWord: { ...defaultSadhanaTypography.completedWord, ...(parsed.completedWord || {}) },
+          upcomingWord: { ...defaultSadhanaTypography.upcomingWord, ...(parsed.upcomingWord || {}) },
+          header: { ...defaultSadhanaTypography.header, ...(parsed.header || {}) },
+        };
+      } catch (e) { }
+    }
+    return defaultSadhanaTypography;
+  });
+
+  // Falling Drops / Dripping Tap Animation Settings
+  const [dripAnimationSettings, setDripAnimationSettings] = useState(() => {
+    const stored = localStorage.getItem('pashyanti_drip_settings');
+    if (stored) {
+      try {
+        return { ...defaultDripAnimationSettings, ...JSON.parse(stored) };
+      } catch (e) { }
+    }
+    return defaultDripAnimationSettings;
   });
 
   // Sadhana Mantras & selected
@@ -283,6 +334,18 @@ export function AppProvider({ children }) {
   }, [naamJapaStats]);
 
   useEffect(() => {
+    localStorage.setItem('pashyanti_naamjapa_typography', JSON.stringify(naamJapaTypography));
+  }, [naamJapaTypography]);
+
+  useEffect(() => {
+    localStorage.setItem('pashyanti_sadhana_typography', JSON.stringify(sadhanaTypography));
+  }, [sadhanaTypography]);
+
+  useEffect(() => {
+    localStorage.setItem('pashyanti_drip_settings', JSON.stringify(dripAnimationSettings));
+  }, [dripAnimationSettings]);
+
+  useEffect(() => {
     if (user) {
       localStorage.setItem('pashyanti_auth_user', JSON.stringify(user));
     } else {
@@ -380,6 +443,9 @@ export function AppProvider({ children }) {
           vibrateEnabled,
           fontFamily,
           accentColor,
+          naamJapaTypography,
+          sadhanaTypography,
+          dripAnimationSettings,
         },
       };
 
@@ -476,6 +542,16 @@ export function AppProvider({ children }) {
 
         if (d.naamJapaSettings) {
           setNaamJapaSettings(prev => ({ ...prev, ...d.naamJapaSettings }));
+        }
+
+        if (d.preferences?.naamJapaTypography) {
+          setNaamJapaTypography(prev => ({ ...prev, ...d.preferences.naamJapaTypography }));
+        }
+        if (d.preferences?.sadhanaTypography) {
+          setSadhanaTypography(prev => ({ ...prev, ...d.preferences.sadhanaTypography }));
+        }
+        if (d.preferences?.dripAnimationSettings) {
+          setDripAnimationSettings(prev => ({ ...prev, ...d.preferences.dripAnimationSettings }));
         }
 
         setLastSyncedAt(res.serverUpdatedAt || new Date().toISOString());
@@ -689,6 +765,40 @@ export function AppProvider({ children }) {
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
+  // Granular Typography & Animation updaters
+  const updateNaamJapaTypography = (part, fieldOrValues, val) => {
+    setNaamJapaTypography(prev => {
+      const currentPart = prev[part] || defaultNaamJapaTypography[part] || {};
+      const updatedPart = typeof fieldOrValues === 'object'
+        ? { ...currentPart, ...fieldOrValues }
+        : { ...currentPart, [fieldOrValues]: val };
+      return { ...prev, [part]: updatedPart };
+    });
+  };
+
+  const updateSadhanaTypography = (part, fieldOrValues, val) => {
+    setSadhanaTypography(prev => {
+      const currentPart = prev[part] || defaultSadhanaTypography[part] || {};
+      const updatedPart = typeof fieldOrValues === 'object'
+        ? { ...currentPart, ...fieldOrValues }
+        : { ...currentPart, [fieldOrValues]: val };
+      return { ...prev, [part]: updatedPart };
+    });
+  };
+
+  const updateDripAnimationSettings = (updates) => {
+    setDripAnimationSettings(prev => ({ ...prev, ...updates }));
+  };
+
+  const resetTypography = (target = 'all') => {
+    if (target === 'naamjapa' || target === 'all') {
+      setNaamJapaTypography(defaultNaamJapaTypography);
+    }
+    if (target === 'sadhana' || target === 'all') {
+      setSadhanaTypography(defaultSadhanaTypography);
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -705,6 +815,17 @@ export function AppProvider({ children }) {
         setFontFamily,
         accentColor,
         setAccentColor,
+        // Granular Typography & Aesthetics
+        naamJapaTypography,
+        updateNaamJapaTypography,
+        sadhanaTypography,
+        updateSadhanaTypography,
+        resetTypography,
+        AVAILABLE_FONTS,
+        PRESET_COLORS,
+        // Falling Drops / Dripping Tap Animation
+        dripAnimationSettings,
+        updateDripAnimationSettings,
         // Sadhana
         sadhanaMantras,
         selectedMantraId,

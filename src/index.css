@@ -89,6 +89,59 @@ html.light body {
   animation: sacredPulse 3.5s ease-in-out infinite;
 }
 
+/* Dripping Tap falling drops animation */
+@keyframes dripFall {
+  0% {
+    top: 10%;
+    transform: translate(-50%, 0) scale(1.0);
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    top: 84%;
+    transform: translate(-50%, 0) scale(0.88);
+    opacity: 0;
+  }
+}
+
+@keyframes dropCreate {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -10px) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.0);
+  }
+}
+
+.dripping-word-static {
+  position: absolute;
+  left: 50%;
+  top: 12%;
+  transform: translate(-50%, 0) scale(1.0);
+  pointer-events: none;
+  white-space: normal;
+  max-width: 90%;
+  z-index: 30;
+  text-align: center;
+  animation: dropCreate 0.3s ease-out forwards;
+}
+
+.dripping-word-falling {
+  position: absolute;
+  left: 50%;
+  pointer-events: none;
+  animation-name: dripFall;
+  animation-fill-mode: forwards;
+  white-space: normal;
+  max-width: 90%;
+  z-index: 25;
+  text-align: center;
+}
+
 /* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
